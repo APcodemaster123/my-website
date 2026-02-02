@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Parv, will you be my valentine?</title>
+  <style>
+    * { box-sizing: border-box; }
+    html,body { height: 100%; margin: 0; }
+    body {
+      display: grid;
+      place-items: center;
+      background: #0f172a;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: white;
+      padding: 20px;
+    }
+    .container { text-align: center; width: 100%; max-width: 720px; }
+    h1 { font-size: 32px; margin: 0 0 28px; }
+    .buttons { position: relative; width: 320px; height: 140px; margin: 0 auto; }
+    button {
+      position: absolute;
+      padding: 14px 28px;
+      font-size: 18px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      user-select: none;
+    }
+    #yesBtn { left: 0; top: 50%; transform: translateY(-50%); background: #22c55e; color: #022c22; }
+    #noBtn { left: 200px; top: 50%; transform: translateY(-50%); background: #ef4444; color: white;
+      transition: left 220ms ease, top 220ms ease; will-change: left, top; }
+    #message { margin-top: 26px; font-size: 22px; min-height: 28px; }
+    @media (max-width:480px){
+      .buttons { width: 92%; height: 160px; }
+      #yesBtn { left: 10px; }
+      #noBtn { left: calc(100% - 120px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Change the question text here if you like -->
+    <h1 id="question">Parv, will you be my valentine?</h1>
+
+    <div class="buttons" aria-label="Answer options">
+      <button id="yesBtn" type="button">Yes</button>
+      <button id="noBtn" type="button" aria-hidden="false">No</button>
+    </div>
+
+    <p id="message" aria-live="polite"></p>
+  </div>
+
+  <script>
+    // --- CONFIG: change question text here if needed ---
+    document.getElementById("question").textContent = "Will you go out with me?";
+
+    const noBtn = document.getElementById("noBtn");
+    const yesBtn = document.getElementById("yesBtn");
+    const message = document.getElementById("message");
+    const area = document.querySelector(".buttons");
+
+    // initial position inside area
+    let pos = { x: 200, y: 0 };
+
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+    function placeInitial() {
+      const ar = area.getBoundingClientRect();
+      const br = noBtn.getBoundingClientRect();
+      pos.y = (ar.height - br.height) / 2;
+      // keep existing pos.x if it fits, else center-ish
+      pos.x = clamp(pos.x, 0, ar.width - br.width);
+      noBtn.style.left = pos.x + "px";
+      noBtn.style.top  = pos.y + "px";
+    }
+
+    window.addEventListener("load", placeInitial);
+    window.addEventListener("resize", placeInitial);
+
+    // Smooth dodge on mousemove inside the buttons area
+    area.addEventListener("mousemove", (e) => {
+      const ar = area.getBoundingClientRect();
+      const br = noBtn.getBoundingClientRect();
+
+      // cursor position inside area
+      const mx = e.clientX - ar.left;
+      const my = e.clientY - ar.top;
+
+      // button center inside area
+      const bx = (br.left - ar.left) + br.width / 2;
+      const by = (br.top - ar.top) + br.height / 2;
+
+      const dx = bx - mx;
+      const dy = by - my;
+      const dist = Math.hypot(dx, dy);
+
+      const danger = 90; // radius to start running
+
+      if (dist < danger) {
+        const push = (danger - dist) * 1.4; // speed multiplier
+        const nx = dx / (dist || 1);
+        const ny = dy / (dist || 1);
+
+        pos.x += nx * push;
+        pos.y += ny * push;
+
+        // keep inside area bounds
+        const maxX = ar.width - br.width;
+        const maxY = ar.height - br.height;
+        pos.x = clamp(pos.x, 0, maxX);
+        pos.y = clamp(pos.y, 0, maxY);
+
+        noBtn.style.left = pos.x + "px";
+        noBtn.style.top  = pos.y + "px";
+      }
+    });
+
+    // Extra escape if user manages to hover
+    noBtn.addEventListener("mouseenter", () => {
+      pos.x += (Math.random() > 0.5 ? 1 : -1) * 60;
+      pos.y += (Math.random() > 0.5 ? 1 : -1) * 40;
+
+      const ar = area.getBoundingClientRect();
+      const br = noBtn.getBoundingClientRect();
+
+      pos.x = clamp(pos.x, 0, ar.width - br.width);
+      pos.y = clamp(pos.y, 0, ar.height - br.height);
+
+      noBtn.style.left = pos.x + "px";
+      noBtn.style.top  = pos.y + "px";
+    });
+
+    // Yes click action
+    yesBtn.addEventListener("click", () => {
+      message.textContent = "Haha I knew it! 😌";
+    });
+
+    // Prevent accidental click on No (defensive)
+    noBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // optional playful text
+      message.textContent = "Come on, try Yes 😉";
+    });
+
+    // Touch support: when user taps near No, nudge it away
+    area.addEventListener("touchstart", (ev) => {
+      const touch = ev.touches[0];
+      if (!touch) return;
+      const ar = area.getBoundingClientRect();
+      const mx = touch.clientX - ar.left;
+      const my = touch.clientY - ar.top;
+
+      const br = noBtn.getBoundingClientRect();
+      const bx = (br.left - ar.left) + br.width / 2;
+      const by = (br.top - ar.top) + br.height / 2;
+
+      const dx = bx - mx;
+      const dy = by - my;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 120) {
+        pos.x += dx > 0 ? 60 : -60;
+        pos.y += dy > 0 ? 40 : -40;
+        pos.x = clamp(pos.x, 0, ar.width - br.width);
+        pos.y = clamp(pos.y, 0, ar.height - br.height);
+        noBtn.style.left = pos.x + "px";
+        noBtn.style.top  = pos.y + "px";
+      }
+    }, { passive: true });
+  </script>
+</body>
+</html>
